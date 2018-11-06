@@ -1,0 +1,8 @@
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\bin\Debug\RedNeuronal.exe.config
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\bin\Debug\RedNeuronal.exe
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\bin\Debug\RedNeuronal.pdb
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.csprojResolveAssemblyReference.cache
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.Properties.Resources.resources
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.csproj.GenerateResource.Cache
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.exe
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.pdb
