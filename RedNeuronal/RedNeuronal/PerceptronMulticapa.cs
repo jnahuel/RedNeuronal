@@ -12,9 +12,12 @@ namespace RedNeuronal
         private double[, ,]     pesos;              // Matriz de pesos.     Se usa asi =>   pesos[capa,neuronaInicial,neuronaFinal]
         private double[,]       salidas;            // Matriz de salidas.   Se usa asi =>   salidas[capa,neuronaInicial]
         private double[,]       umbrales;           // Matriz de umbrales.  Se usa asi =>   umbrales[capa,neuronaInicial]
-        private double[]        entradas;           // Vector para almacenar el juego de valores de las entradas
         private int[]           neuronasPorCapa;    // Vector para almacenar la cantidad de neuronas en cada capa
         private int             totalDeCapas;       // Indicador de la cantidad de capas que tiene la red
+
+        // Variables para el entrenamiento
+        private double[]        entradas;           // Vector para almacenar el juego de valores de las entradas
+        private double[]        salidasEsperadas;   // Vector para almacenar los valores esperados de las salidas, contra los cuales se comparan los obtenidos
 
         // Variables auxiliares para llevar el control del funcionamiento de la red
         private string          error;              // Para almacenar el texto descriptivo del error que pueda ocurrir
@@ -68,6 +71,7 @@ namespace RedNeuronal
             // Verificados los parametros de entrada, se establece la estructura de la red
             totalDeCapas = numeroDeCapasOcultas + 2;        // Total = Entrada + Capas ocultas + Salida
             entradas = new double[ numeroDeEntradas + 1 ];  // Se dimensiona el vector de entradas. El +1 es para evitar el indice cero
+            salidasEsperadas = new double[ numeroDeSalidas + 1 ];
             neuronasPorCapa = new int[ totalDeCapas ];      // Se dimensiona el vector de neuronas por capa
 
             // Para hacerlo mas sencillo, se calcula en que capa se tienen mas neuronas y se dimensionan todos con ese valor
@@ -137,6 +141,124 @@ namespace RedNeuronal
                     salidas[capa, neuronaLlegada] = Sigmoidea(sumatoria);
                 }
 
+        }
+
+
+
+        /****************************************************************/
+        /* derivadaDelErrorRespectoDelPeso                              */
+        /*   Es el calculo de la derivada del error respecto de un peso */
+        /*   especifico para corregir su valor.                         */
+        /*   La ecuacion es igual a:                                    */
+        /*      Sum( [Yi - Si] * derivada( Yi ) / derivada del peso )   */
+        /*   Donde:                                                     */
+        /*      Yi: Salida real de la red.                              */
+        /*      Si: Salida esperada de la red.                          */
+        /*      der(Yi): Es la derivada de la salida Yi respecto del    */
+        /*          peso en cuestion.                                   */
+        /*                                                              */
+        /*   La diferencia entra las salidas se calcula directamente.   */
+        /*   Para hacerlo mas sencillo de entender, la derivada de las  */
+        /*   salidas respecto de los diferentes pesos de realiza en una */
+        /*   funcion especifica.                                        */
+        /*                                                              */
+        /* Recibe:                                                      */
+        /*   Wcapa - La capa del peso solicitado.                       */
+        /*   Wsalida - La neurona de salida que conecta el peso.        */
+        /*   Wllegada - La neurona de llegada que conecto el peso.      */
+        /* Devuelve:                                                    */
+        /*   El resultado numerico del calculo.                         */
+        /****************************************************************/
+        private double derivadaDelErrorRespectoDelPeso(int Wcapa, int Wsalida, int Wllegada)
+        {
+            // Variables auxiliares para hacer mas legible el codigo
+            double primerTermino;
+            double segundoTermino;
+            double sumatoria;
+            int ultimaCapa = totalDeCapas + 1;
+
+            // Inicializacion de las variables criticas, por las dudas
+            sumatoria = 0;
+
+            // Bucle para realizar la sumatoria
+            for (int indiceSalida = 1; indiceSalida < neuronasPorCapa[ ultimaCapa ]; indiceSalida++)
+            {
+                primerTermino = salidas[ultimaCapa, indiceSalida] - salidasEsperadas[ indiceSalida ];
+                segundoTermino = derivadaDeLaSalidaRespectoDelPeso(indiceSalida, Wcapa, Wsalida, Wllegada);
+                sumatoria += primerTermino * segundoTermino;
+            }
+
+            // Luego del loop, solo resta devolver el valor calculado
+            return( sumatoria );
+        }
+
+
+        /****************************************************************/
+        /* derivadaDeLaSalidaRespectoDelPeso                            */
+        /*   Calcula la derivada de una salida especifica respecto del  */
+        /*   peso solicitado.                                           */
+        /*   Es llamada desde "derivadaDelErrorRespectoDelPeso" para    */
+        /*   obtener el segundo termino.                                */
+        /*                                                              */
+        /*   Cada salida se calcula como:                               */
+        /*      Yi = act( U + sum( a * W ) )                            */
+        /*   Donde:                                                     */
+        /*      U: Es el umbral de la neurona.                          */
+        /*      a: Son las salidas de las neuronas de la capa anterior. */
+        /*      W: Son los pesos que ponderan las salidas de las        */
+        /*          neuronas de la capa anterior.                       */
+        /*      act(): Es la funcion de activacion de la neurona.       */
+        /*          Normalmente sera una Sigmoidea o una Tangente.      */
+        /*          Esto hace que se tengan que realizar las derivadas  */
+        /*          mediante la regla de la cadena, debiendo derivar la */
+        /*          funcion de activacion y luego las derivadas         */
+        /*          parciales del argumento de la funcion de activacion.*/
+        /*                                                              */
+        /*   Al igual que en la funcion precedente, se opta por dividir */
+        /*   el procedimiento en 2 calculos y obtener las derivadas     */
+        /*   parciales mediante una funcion especifica para una mayor   */
+        /*   comprension del codigo.                                    */
+        /*   A su vez, tambien se plantea una funcion especifica para   */
+        /*   la derivada de la funcion de activacion. Mediante esto, el */
+        /*   procedimiento general sera el mismo independientemente de  */
+        /*   que funcion se emplee, y se podran comprar resultados con  */
+        /*   mayor facilidad a futuro.                                  */
+        /*                                                              */
+        /* Recibe:                                                      */
+        /*   salida - El numero de la salida requerida                  */
+        /*   Wcapa - La capa del peso solicitado.                       */
+        /*   Wsalida - La neurona de salida que conecta el peso.        */
+        /*   Wllegada - La neurona de llegada que conecto el peso.      */
+        /* Devuelve:                                                    */
+        /*   El resultado numerico del calculo.                         */
+        /****************************************************************/
+        private double derivadaDeLaSalidaRespectoDelPeso( int salida, int Wcapa, int Wsalida, int Wllegada )
+        {
+            // Variables auxiliares para hacer mas legible el codigo
+            double primerTermino;
+            double segundoTermino;
+            double sumatoria;
+            int capa = totalDeCapas;            // Es la anteultima capa
+
+            // Inicializacion de las variables criticas, por las dudas
+            sumatoria = 0;
+
+
+            for (int indiceSenial = 1; indiceSenial < neuronasPorCapa[capa]; indiceSenial++ )
+            {
+                primerTermino = 2;
+                segundoTermino = derivadaParcialRespectoDelPeso( capa, indiceSenial, Wcapa, Wsalida, Wllegada );
+                sumatoria += primerTermino * segundoTermino;
+            }
+
+            return ( sumatoria );
+        }
+
+
+
+        private double derivadaParcialRespectoDelPeso( int senialCapa, int senialNeurona, int Wcapa, int Wsalida, int Wllegada )
+        {
+            return (2);
         }
 
 
