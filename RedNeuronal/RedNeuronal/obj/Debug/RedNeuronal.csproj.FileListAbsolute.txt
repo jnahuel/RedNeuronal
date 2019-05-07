@@ -6,3 +6,5 @@ D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.Properties.
 D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.csproj.GenerateResource.Cache
 D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.exe
 D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.pdb
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.Form1.resources
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\Debug\RedNeuronal.csproj.ResolveComReference.cache

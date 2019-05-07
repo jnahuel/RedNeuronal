@@ -12,9 +12,9 @@ namespace RedNeuronal
         public enum             funcionesActivacion { FUNCION_SIGMOIDEA, FUNCION_TANGENCIAL, FUNCION_PROPIA };
 
         // Variables para el kernel de la red
-        private double[, ,]     pesos;              // Matriz de pesos.     Se usa asi =>   pesos[capa,neuronaInicial,neuronaFinal]
-        private double[,]       seniales;           // Matriz de seniales.  Se usa asi =>   salidas[capa,neuronaInicial]
-        private double[,]       umbrales;           // Matriz de umbrales.  Se usa asi =>   umbrales[capa,neuronaInicial]
+        public double[, ,]      pesos;              // Matriz de pesos.     Se usa asi =>   pesos[capa,neuronaInicial,neuronaFinal]
+        public double[,]        seniales;           // Matriz de seniales.  Se usa asi =>   salidas[capa,neuronaInicial]
+        public double[,]        umbrales;           // Matriz de umbrales.  Se usa asi =>   umbrales[capa,neuronaInicial]
         private int[]           neuronasPorCapa;    // Vector para almacenar la cantidad de neuronas en cada capa
         private int             totalDeCapas;       // Indicador de la cantidad de capas que tiene la red
         private int             totalDeEntradasExternas;
@@ -25,11 +25,12 @@ namespace RedNeuronal
         private double[]        entradas;           // Vector para almacenar el juego de valores de las entradas
         private double[]        salidasEsperadas;   // Vector para almacenar los valores esperados de las salidas, contra los cuales se comparan los obtenidos
         private double[, ,]     derivadasDeLosPesos;
+        private double[,]       derivadasDeLosUmbrales;
         private double[]        entradasAuxiliares;
         private double[]        salidasAuxiliares;
 
         // Variables para almacenar los conjuntos de pares entradas-salidas reales de la red para armar una tabla y obtener el porcentaje de acierto
-        private double[,]       salidasTabla;
+        public double[,]        salidasTabla;
 
         // Variables auxiliares para llevar el control del funcionamiento de la red
         private string          error;              // Para almacenar el texto descriptivo del error que pueda ocurrir
@@ -109,6 +110,7 @@ namespace RedNeuronal
             // Conociendo el maximo de neuronas en una capa, se dimensionan el resto de las variables
             pesos = new double[ totalDeCapas, maximoDeNeuronas, maximoDeNeuronas ];
             derivadasDeLosPesos = new double[ totalDeCapas, maximoDeNeuronas, maximoDeNeuronas ];
+            derivadasDeLosUmbrales = new double[ totalDeCapas + 1, maximoDeNeuronas ];
             seniales = new double[totalDeCapas + 1, maximoDeNeuronas];
             umbrales = new double[totalDeCapas + 1, maximoDeNeuronas];
             neuronasPorCapa = new int[totalDeCapas + 1];
@@ -148,7 +150,7 @@ namespace RedNeuronal
         /*                                                              */
         /* Devuelve: Nada                                               */
         /****************************************************************/
-        public void ObtenerTablaEntradasSalidas(double[,] entradasExternas)
+        public void ObtenerTablaEntradasSalidas(double[,] entradasExternas, bool salidasRedondeadas)
         {
             // Se obtiene el numero de pares de entradas-salidas, representado por la cantidad de filas que tenga la matriz de datos
             int totalDePares = entradasExternas.GetLength(0);
@@ -162,11 +164,19 @@ namespace RedNeuronal
                     entradasAuxiliares[indiceEntrada] = entradasExternas[indiceParDeDatos, indiceEntrada];
 
                 // Luego se procesan los valores de las seniales de entrada para obtener las salidas reales
-                CalcularSalida(entradasAuxiliares);
+                CalcularSalidas(entradasAuxiliares);
 
-                // Posteriomente se redondean hacia 0 y 1 para hacer mas facil las comparaciones
-                redondearSalidas(indiceParDeDatos);
-
+                // Posteriomente se redondean hacia 0 y 1 para hacer mas facil las comparaciones, si es que asi se lo requiere
+                if (salidasRedondeadas == true)
+                    redondearSalidas(indiceParDeDatos);
+                else
+                {
+                    // Se recorren las salidas reales de la red redondeando de a una
+                    for (int indiceSalida = 1; indiceSalida <= totalDeSalidasExternas; indiceSalida++)
+                    {
+                        salidasTabla[indiceParDeDatos, indiceSalida] = seniales[totalDeCapas, indiceSalida];
+                    }
+                }
             }
         }
 
@@ -183,7 +193,7 @@ namespace RedNeuronal
         /*                                                              */
         /* Devuelve: Nada                                               */
         /****************************************************************/
-        public void CalcularSalida(double[] valoresEntradasExternas)
+        public void CalcularSalidas(double[] valoresEntradasExternas)
         {
             // Variables auxiliares
             double sumatoria;
@@ -252,8 +262,9 @@ namespace RedNeuronal
 
 
 
-
+                        /*******************************************************************************************************/
                         /*************** *************** SECCION PARA EL ENTRENAMIENTO DE LA RED *************** ***************/
+                        /*******************************************************************************************************/
 
         /****************************************************************/
         /* actualizarPesosUmbrales                                      */
@@ -268,22 +279,36 @@ namespace RedNeuronal
             salidasEsperadas = salidasCorrectas;
 
             // Luego se procesan los valores de las seniales de entrada para obtener las salidas reales
-            CalcularSalida( valoresEntradasExternas );
+            CalcularSalidas( valoresEntradasExternas );
 
-            // Luego se debe realizar un loop para hallar la derivada del error respecto de todos los pesos
+            // Luego se debe realizar un loop para hallar la derivada del error respecto de todos los pesos y los umbrales
             for (int capa = totalDeCapas; capa >= 1; capa--)                                                      // Alpha
                 for (int indiceLlegada = 1; indiceLlegada <= neuronasPorCapa[capa]; indiceLlegada++)              // Gamma
-                    for (int indiceSalida = 1; indiceSalida <= neuronasPorCapa[capa-1]; indiceSalida++)           // Beta
-                        derivadasDeLosPesos[capa-1, indiceSalida, indiceLlegada] = derivadaDelErrorRespectoDelPeso(capa-1, indiceSalida, indiceLlegada);
+                {
+                    // Bucle para calcular la derivada de los pesos
+                    for (int indiceSalida = 1; indiceSalida <= neuronasPorCapa[capa - 1]; indiceSalida++)         // Beta
+                        derivadasDeLosPesos[capa - 1, indiceSalida, indiceLlegada] = derivadaDelErrorRespectoDelPeso(capa - 1, indiceSalida, indiceLlegada);
 
-            // Se actualizan los valores de los pesos
+                    // Calculo de la derivada de los umbrales
+                    derivadasDeLosUmbrales[capa, indiceLlegada] = derivadaDelErrorRespectoDelUmbral( capa, indiceLlegada );
+                }
+
+            // Se actualizan los valores de los pesos y los umbrales
             for (int capa = totalDeCapas; capa >= 1; capa--)
                 for (int indiceLlegada = 1; indiceLlegada <= neuronasPorCapa[capa]; indiceLlegada++)
+                {
+                    // Correccion de los pesos
                     for (int indiceSalida = 1; indiceSalida <= neuronasPorCapa[capa - 1]; indiceSalida++)
                         pesos[capa - 1, indiceSalida, indiceLlegada] -= coeficienteDeAprendizaje * derivadasDeLosPesos[capa - 1, indiceSalida, indiceLlegada];
+
+                    // Correccion de los umbrales
+                    umbrales[capa, indiceLlegada] -= coeficienteDeAprendizaje * derivadasDeLosUmbrales[capa, indiceLlegada];
+                }
         }
 
 
+
+                            /*************** *************** DERIVADAS RESPECTO DE LOS PESOS *************** ***************/
 
         /****************************************************************/
         /* derivadaDelErrorRespectoDelPeso                              */
@@ -362,7 +387,7 @@ namespace RedNeuronal
         /*   A su vez, tambien se plantea una funcion especifica para   */
         /*   la derivada de la funcion de activacion. Mediante esto, el */
         /*   procedimiento general sera el mismo independientemente de  */
-        /*   que funcion se emplee, y se podran comprar resultados con  */
+        /*   que funcion se emplee, y se podran comparar resultados con */
         /*   mayor facilidad a futuro.                                  */
         /*                                                              */
         /* Recibe:                                                      */
@@ -472,6 +497,195 @@ namespace RedNeuronal
         }
 
 
+
+                            /*************** *************** DERIVADAS RESPECTO DE LOS UMBRALES *************** ***************/
+
+        /****************************************************************/
+        /* derivadaDelErrorRespectoDelUmbral                            */
+        /*   Es el calculo de la derivada del error respecto de un      */
+        /*   umbral especifico para corregir su valor.                  */
+        /*   La ecuacion es igual a:                                    */
+        /*      Sum( [Yi - Si] * derivada( Yi ) / derivada del umbral ) */
+        /*   Donde:                                                     */
+        /*      Yi: Salida real de la red.                              */
+        /*      Si: Salida esperada de la red.                          */
+        /*      der(Yi): Es la derivada de la salida Yi respecto del    */
+        /*          umbral en cuestion.                                 */
+        /*                                                              */
+        /*   La diferencia entra las salidas se calcula directamente.   */
+        /*   Para hacerlo mas sencillo de entender, la derivada de las  */
+        /*   salidas respecto de los diferentes umbrales de realiza en  */
+        /*   una funcion especifica.                                    */
+        /*                                                              */
+        /* Recibe:                                                      */
+        /*   Ucapa - La capa del umbral solicitado.                     */
+        /*   Ullegada - El numero de la neurona a la cual ingresa el    */
+        /*              umbral.                                         */
+        /* Devuelve:                                                    */
+        /*   El resultado numerico del calculo.                         */
+        /****************************************************************/
+        private double derivadaDelErrorRespectoDelUmbral(int Ucapa, int Ullegada)
+        {
+            // Variables auxiliares para hacer mas legible el codigo
+            double primerTermino;
+            double segundoTermino;
+            double sumatoria;
+            int ultimaCapa = totalDeCapas;
+
+            // Inicializacion de las variables criticas, por las dudas
+            sumatoria = 0;
+
+            // Bucle para realizar la sumatoria
+            for (int indiceSalida = 1; indiceSalida <= neuronasPorCapa[ultimaCapa]; indiceSalida++)
+            {
+                primerTermino = seniales[ultimaCapa, indiceSalida] - salidasEsperadas[indiceSalida];
+                segundoTermino = derivadaDeLaSalidaRespectoDelUmbral(indiceSalida, Ucapa, Ullegada);
+                sumatoria += primerTermino * segundoTermino;
+            }
+
+            // Luego del loop, solo resta devolver el valor calculado
+            return (sumatoria);
+        }
+
+
+
+        /****************************************************************/
+        /* derivadaDeLaSalidaRespectoDelUmbral                          */
+        /*   Calcula la derivada de una salida especifica respecto del  */
+        /*   umbral solicitado.                                         */
+        /*   Es llamada desde "derivadaDelErrorRespectoDelUmbral" para  */
+        /*   obtener el segundo termino.                                */
+        /*                                                              */
+        /*   Cada salida se calcula como:                               */
+        /*      Yi = Fact( U + sum( a * W ) )                           */
+        /*   Donde:                                                     */
+        /*      U: Es el umbral de la neurona.                          */
+        /*      a: Son las salidas de las neuronas de la capa anterior. */
+        /*      W: Son los pesos que ponderan las salidas de las        */
+        /*          neuronas de la capa anterior.                       */
+        /*      Fact(): Es la funcion de activacion de la neurona.      */
+        /*          Normalmente sera una Sigmoidea o una Tangente.      */
+        /*          Esto hace que se tengan que realizar las derivadas  */
+        /*          mediante la regla de la cadena, debiendo derivar la */
+        /*          funcion de activacion y luego las derivadas         */
+        /*          parciales del argumento de la funcion de activacion.*/
+        /*                                                              */
+        /*   Al igual que en la funcion precedente, se opta por dividir */
+        /*   el procedimiento en 2 calculos y obtener las derivadas     */
+        /*   parciales mediante una funcion especifica para una mayor   */
+        /*   comprension del codigo.                                    */
+        /*   A su vez, tambien se plantea una funcion especifica para   */
+        /*   la derivada de la funcion de activacion. Mediante esto, el */
+        /*   procedimiento general sera el mismo independientemente de  */
+        /*   que funcion se emplee, y se podran comparar resultados con */
+        /*   mayor facilidad a futuro.                                  */
+        /*                                                              */
+        /* Recibe:                                                      */
+        /*   salida - El numero de la salida requerida                  */
+        /*   Ucapa - La capa del umbral solicitado.                     */
+        /*   Ullegada - El numero de la neurona a la cual ingresa el    */
+        /*              umbral.                                         */
+        /* Devuelve:                                                    */
+        /*   El resultado numerico del calculo.                         */
+        /****************************************************************/
+        private double derivadaDeLaSalidaRespectoDelUmbral(int salidaIndice, int Ucapa, int Uindice)
+        {
+            // Variables auxiliares para hacer mas legible el codigo
+            double primerTermino;
+            double segundoTermino;
+            double sumatoria;
+            int salidaCapa = totalDeCapas;
+
+            // Inicializacion de las variables criticas, por las dudas
+            sumatoria = 0;
+
+            // Primero se debe revisar si el umbral es de una neurona de la ultima capa
+            if ( salidaCapa == Ucapa )
+            {
+                // Si coinciden el indice de la salida con el del umbral, entonces la derivada no es nula
+                if (salidaIndice == Uindice)
+                {
+                    return ( derivadaDeLaFuncionActivacion(salidaCapa, salidaIndice) );
+                }
+                // Si no coinciden, la derivada es cero porque la senial no depende del umbral en cuestion
+                else
+                {
+                    return (0);
+                }
+            }
+
+            // Si no coinciden, se debe realizar la derivada de la funcion de activacion por la sumatoria de las derivadas parciales de las seniales de la capa anterior
+            primerTermino = derivadaDeLaFuncionActivacion(salidaCapa, salidaIndice);
+            for (int indiceUmbral = 1; indiceUmbral <= neuronasPorCapa[salidaCapa - 1]; indiceUmbral++)
+            {
+                segundoTermino = derivadaParcialRespectoDelUmbral(salidaCapa - 1, indiceUmbral, Ucapa, Uindice);
+                sumatoria += pesos[salidaCapa - 1, indiceUmbral, salidaIndice] * segundoTermino;
+            }
+
+            return (primerTermino * sumatoria);
+        }
+
+
+
+        /****************************************************************/
+        /* derivadaParcialRespectoDelUmbral                             */
+        /*   Realiza la derivada parcial de cualquier senial de salida  */
+        /*   de una neurona respecto de cualquier umbral.               */
+        /*   Es practicamente el mismo procedimiento que el de la       */
+        /*   funcion "derivadaDeLaSalidaRespectoDelUmbral", salvo que   */
+        /*   esa funcion se aplica solo a las salidas de las neuronas   */
+        /*   de la ultima capa de la red, o sea, las salidas externas   */
+        /*   de la red, mientras que esta funcion es para todas las     */
+        /*   seniales internas de la red.                               */
+        /*                                                              */
+        /* Recibe:                                                      */
+        /*   senialCapa - La capa de la senial a derivar.               */
+        /*   senialNeurona - El numero de la neurona a derivar.         */
+        /*   Ucapa - La capa del umbral solicitado.                     */
+        /*   Ullegada - El numero de la neurona a la cual ingresa el    */
+        /*              umbral.                                         */
+        /* Devuelve:                                                    */
+        /*   El resultado numerico del calculo.                         */
+        /****************************************************************/
+        private double derivadaParcialRespectoDelUmbral( int senialCapa, int senialNeurona, int Ucapa, int Uindice)
+        {
+            // Variables auxiliares
+            double primerTermino;
+            double segundoTermino;
+            double sumatoria;
+
+            // Primero se debe revisar si el umbral es de una neurona de la ultima capa
+            if (senialCapa == Ucapa)
+            {
+                // Si coinciden el indice de la salida con el del umbral, entonces la derivada no es nula
+                if (senialNeurona == Uindice)
+                {
+                    primerTermino = derivadaDeLaFuncionActivacion(senialCapa, senialNeurona);
+                    return ( primerTermino );
+                }
+                // Si no coinciden, la derivada es cero porque la senial no depende del umbral en cuestion
+                else
+                {
+                    return (0);
+                }
+            }
+
+            // Si no coinciden, se debe realizar la derivada de la funcion de activacion por la sumatoria de las derivadas parciales de las seniales de la capa anterior
+            primerTermino = derivadaDeLaFuncionActivacion(senialCapa, senialNeurona);
+            sumatoria = 0;
+            for (int indiceSenialCapaAnterior = 1; indiceSenialCapaAnterior <= neuronasPorCapa[senialCapa - 1]; indiceSenialCapaAnterior++)
+            {
+                segundoTermino = derivadaParcialRespectoDelUmbral(senialCapa - 1, indiceSenialCapaAnterior, Ucapa, Uindice);
+                sumatoria += pesos[senialCapa - 1, indiceSenialCapaAnterior, senialNeurona] * segundoTermino;
+            }
+
+            // Luego del loop, resta multiplicar los terminos
+            return (primerTermino * sumatoria);
+        }
+
+
+
+                            /*************** *************** DERIVADA DE LA FUNCION DE ACTIVACION *************** ***************/
 
         /****************************************************************/
         /* derivadaDeLaFuncionActivacion                                */
