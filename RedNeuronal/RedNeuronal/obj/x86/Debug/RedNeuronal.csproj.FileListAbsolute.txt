@@ -1,0 +1,11 @@
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\bin\x86\Debug\RedNeuronal.exe.config
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\x86\Debug\RedNeuronal.csproj.ResolveComReference.cache
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\bin\x86\Debug\RedNeuronal.exe
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\bin\x86\Debug\RedNeuronal.pdb
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\bin\x86\Debug\ExcelDataReader.dll
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\bin\x86\Debug\ExcelDataReader.xml
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\x86\Debug\RedNeuronal.Form1.resources
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\x86\Debug\RedNeuronal.Properties.Resources.resources
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\x86\Debug\RedNeuronal.csproj.GenerateResource.Cache
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\x86\Debug\RedNeuronal.exe
+D:\RepoGit\RedNeuronal\RedNeuronal\RedNeuronal\obj\x86\Debug\RedNeuronal.pdb
